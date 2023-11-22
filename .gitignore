@@ -1,3 +1,9 @@
+### MACHINE LEARNING ###
+*.jpg
+*.jpeg
+*.png
+
+
 ### PYTHON ###
 
 # Byte-compiled / optimized / DLL files
