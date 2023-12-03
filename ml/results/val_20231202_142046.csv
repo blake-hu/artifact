@@ -1,0 +1,1 @@
+mcc,f1,accuracy,num_epochs,batch_size,learning_rate,category,weight_decay,patience,min_delta,device
