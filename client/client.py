@@ -1,53 +1,15 @@
-#
-# Client-side python app for benford app, which is calling
-# a set of lambda functions in AWS through API Gateway.
-# The overall purpose of the app is to process a PDF and
-# see if the numeric values in the PDF adhere to Benford's
-# law.
-#
-# Authors:
-#   Northwestern University
-#   CS 310
-#
-
+import pathlib
+import base64
+import logging
 import requests
-import jsons
+import json
 
 import uuid
 import pathlib
 import logging
 import sys
 import os
-import base64
 
-from configparser import ConfigParser
-
-
-############################################################
-#
-# classes
-#
-class Image:
-
-  def __init__(self, row):
-    self.imageid = row[0]
-    self.time_uploaded = row[1]
-    self.image_size = row[2]
-    self.file_name = row[3]
-    self.bucket_key = row[4]
-
-class Prediction:
-
-  def __init__(self, row):
-    self.prediction_id = row[0]
-    self.image_id = row[1]
-    self.percentage_ai = row[2]
-    self.model_version = row[3]
-
-############################################################
-#
-# prompt
-#
 def prompt():
   """
   Prompts the user and returns the command number
@@ -66,7 +28,7 @@ def prompt():
   print("   1 => images")
   print("   2 => predictions")
   print("   3 => upload")
-  print("   4 => download")
+  print("   4 => retrieve")
   print("   5 => stats")
 
   cmd = input()
@@ -80,159 +42,6 @@ def prompt():
 
   return cmd
 
-
-# ############################################################
-# #
-# # users
-# #
-# def users(baseurl):
-#   """
-#   Prints out all the users in the database
-
-#   Parameters
-#   ----------
-#   baseurl: baseurl for web service
-
-#   Returns
-#   -------
-#   nothing
-#   """
-
-#   try:
-#     #
-#     # call the web service:
-#     #
-#     api = '/users'
-#     url = baseurl + api
-
-#     res = requests.get(url)
-
-#     #
-#     # let's look at what we got back:
-#     #
-#     if res.status_code != 200:
-#       # failed:
-#       print("Failed with status code:", res.status_code)
-#       print("url: " + url)
-#       if res.status_code == 400:
-#         # we'll have an error message
-#         body = res.json()
-#         print("Error message:", body)
-#       #
-#       return
-
-#     #
-#     # deserialize and extract users:
-#     #
-#     body = res.json()
-
-#     #
-#     # let's map each row into a User object:
-#     #
-#     users = []
-#     for row in body:
-#       user = User(row)
-#       users.append(user)
-#     #
-#     # Now we can think OOP:
-#     #
-#     if len(users) == 0:
-#       print("no users...")
-#       return
-
-#     for user in users:
-#       print(user.userid)
-#       print(" ", user.username)
-#       print(" ", user.pwdhash)
-#     #
-#     return
-
-#   except Exception as e:
-#     logging.error("users() failed:")
-#     logging.error("url: " + url)
-#     logging.error(e)
-#     return
-
-
-# ############################################################
-# #
-# # jobs
-# #
-# def jobs(baseurl):
-#   """
-#   Prints out all the jobs in the database
-
-#   Parameters
-#   ----------
-#   baseurl: baseurl for web service
-
-#   Returns
-#   -------
-#   nothing
-#   """
-
-#   try:
-#     #
-#     # call the web service:
-#     #
-#     api = '/jobs'
-#     url = baseurl + api
-
-#     res = requests.get(url)
-
-#     #
-#     # let's look at what we got back:
-#     #
-#     if res.status_code != 200:
-#       # failed:
-#       print("Failed with status code:", res.status_code)
-#       print("url: " + url)
-#       if res.status_code == 400:
-#         # we'll have an error message
-#         body = res.json()
-#         print("Error message:", body)
-#       #
-#       return
-
-#     #
-#     # deserialize and extract jobs:
-#     #
-#     body = res.json()
-#     #
-#     # let's map each row into an Job object:
-#     #
-#     jobs = []
-#     for row in body:
-#       job = Job(row)
-#       jobs.append(job)
-#     #
-#     # Now we can think OOP:
-#     #
-#     if len(jobs) == 0:
-#       print("no jobs...")
-#       return
-
-#     for job in jobs:
-#       print(job.jobid)
-#       print(" ", job.userid)
-#       print(" ", job.status)
-#       print(" ", job.originaldatafile)
-#       print(" ", job.datafilekey)
-#       print(" ", job.resultsfilekey)
-#     #
-#     return
-
-#   except Exception as e:
-#     logging.error("jobs() failed:")
-#     logging.error("url: " + url)
-#     logging.error(e)
-#     return
-
-
-############################################################
-#
-# upload
-#
 def upload(baseurl):
   """
   Prompts the user for a local filename and user id, 
@@ -247,15 +56,12 @@ def upload(baseurl):
   nothing
   """
 
-  print("Enter PDF filename>")
+  print("Enter filename>")
   local_filename = input()
 
   if not pathlib.Path(local_filename).is_file():
-    print("PDF file '", local_filename, "' does not exist...")
+    print("file '", local_filename, "' does not exist...")
     return
-
-  print("Enter user id>")
-  userid = input()
 
   try:
     #
@@ -274,15 +80,70 @@ def upload(baseurl):
     data = base64.b64encode(bytes)
     datastr = data.decode()
 
-    data = {"filename": local_filename, "data": datastr}
+    data = {"filename": local_filename, 
+            "data": datastr}
 
     #
     # call the web service:
     #
     api = '/upload'
-    url = baseurl + api + "/" + userid
-
+    url = baseurl + api
+    print(url)
     res = requests.post(url, json=data)
+    #
+    # let's look at what we got back:
+    #
+    if res.status_code != 200:
+      # failed:
+      print("Failed with status code:", res.status_code)
+      print("url: " + url)
+      if res.status_code == 400:
+        # we'll have an error message
+        body = res.json()
+        print("Error message:", body)
+      #
+      return
+    body = res.json()
+
+    print("uploaded: ", body["imageID"])
+    print("**Save the above number, this is your imageid. Run predictions to see the ai prediction on this image.**")
+    return
+
+  except Exception as e:
+    logging.error("upload() failed:")
+    logging.error("url: " + url)
+    logging.error(e)
+    return
+  
+  # ############################################################
+# #
+# # download
+# #
+def download(baseurl):
+  """
+  Prompts the user for the job id, and downloads
+  that asset (PDF).
+
+  Parameters
+  ----------
+  baseurl: baseurl for web service
+
+  Returns
+  -------
+  nothing
+  """
+
+  print("Enter job id>")
+  jobid = input()
+
+  try:
+    #
+    # call the web service:
+    #
+    api = '/download'
+    url = baseurl + api + '/' + jobid
+
+    res = requests.get(url)
 
     #
     # let's look at what we got back:
@@ -299,202 +160,28 @@ def upload(baseurl):
       return
 
     #
-    # success, extract jobid:
+    # deserialize and extract results:
     #
     body = res.json()
 
-    jobid = body
+    datastr = body
 
-    print("PDF uploaded, job id =", jobid)
+    base64_bytes = datastr.encode()
+    bytes = base64.b64decode(base64_bytes)
+    results = bytes.decode()
+
+    print(results)
     return
 
   except Exception as e:
-    logging.error("upload() failed:")
+    logging.error("download() failed:")
     logging.error("url: " + url)
     logging.error(e)
     return
-
-
-# ############################################################
-# #
-# # download
-# #
-# def download(baseurl):
-#   """
-#   Prompts the user for the job id, and downloads
-#   that asset (PDF).
-
-#   Parameters
-#   ----------
-#   baseurl: baseurl for web service
-
-#   Returns
-#   -------
-#   nothing
-#   """
-
-#   print("Enter job id>")
-#   jobid = input()
-
-#   try:
-#     #
-#     # call the web service:
-#     #
-#     api = '/download'
-#     url = baseurl + api + '/' + jobid
-
-#     res = requests.get(url)
-
-#     #
-#     # let's look at what we got back:
-#     #
-#     if res.status_code != 200:
-#       # failed:
-#       print("Failed with status code:", res.status_code)
-#       print("url: " + url)
-#       if res.status_code == 400:
-#         # we'll have an error message
-#         body = res.json()
-#         print("Error message:", body)
-#       #
-#       return
-
-#     #
-#     # deserialize and extract results:
-#     #
-#     body = res.json()
-
-#     datastr = body
-
-#     base64_bytes = datastr.encode()
-#     bytes = base64.b64decode(base64_bytes)
-#     results = bytes.decode()
-
-#     print(results)
-#     return
-
-#   except Exception as e:
-#     logging.error("download() failed:")
-#     logging.error("url: " + url)
-#     logging.error(e)
-#     return
-
-
-# ############################################################
-# #
-# # reset
-# #
-# def reset(baseurl):
-#   """
-#   Resets the database back to initial state.
-
-#   Parameters
-#   ----------
-#   baseurl: baseurl for web service
-
-#   Returns
-#   -------
-#   nothing
-#   """
-
-#   try:
-#     #
-#     # call the web service:
-#     #
-#     api = '/reset'
-#     url = baseurl + api
-
-#     res = requests.delete(url)
-
-#     #
-#     # let's look at what we got back:
-#     #
-#     if res.status_code != 200:
-#       # failed:
-#       print("Failed with status code:", res.status_code)
-#       print("url: " + url)
-#       if res.status_code == 400:
-#         # we'll have an error message
-#         body = res.json()
-#         print("Error message:", body)
-#       #
-#       return
-
-#     #
-#     # deserialize and print message
-#     #
-#     body = res.json()
-
-#     msg = body
-
-#     print(msg)
-#     return
-
-#   except Exception as e:
-#     logging.error("reset() failed:")
-#     logging.error("url: " + url)
-#     logging.error(e)
-#     return
-
-
-############################################################
-# main
-#
-try:
-  print('** Welcome to AIestimateApp **')
-  print('** We take an image and return the percentage of it being ai generated  **') ##fancier intro
-  print()
-
-  # eliminate traceback so we just get error message:
-  sys.tracebacklimit = 0
-
-  #
-  # what config file should we use for this session?
-  #
-  config_file = '.ini' ##update with proper config
-
-  print("Config file to use for this session?")
-  print("Press ENTER to use default, or")
-  print("enter config file name>")
-  s = input()
-
-  if s == "":  # use default
-    pass  # already set
-  else:
-    config_file = s
-
-  #
-  # does config file exist?
-  #
-  if not pathlib.Path(config_file).is_file():
-    print("**ERROR: config file '", config_file, "' does not exist, exiting")
-    sys.exit(0)
-
-  #
-  # setup base URL to web service:
-  #
-  configur = ConfigParser()
-  configur.read(config_file)
-  baseurl = configur.get('client', 'webservice')
-
-  #
-  # make sure baseurl does not end with /, if so remove:
-  #
-  if len(baseurl) < 16:
-    print("**ERROR: baseurl '", baseurl, "' is not nearly long enough...")
-    sys.exit(0)
-
-  if baseurl == "https://YOUR_GATEWAY_API.amazonaws.com":
-    print("**ERROR: update config.ini file with your gateway endpoint")
-    sys.exit(0)
-
-  lastchar = baseurl[len(baseurl) - 1]
-  if lastchar == "/":
-    baseurl = baseurl[:-1]
-
-  #
-  # main processing loop:
-  #
+  
+def main():
+  baseurl= f"https://rce057rit7.execute-api.us-east-2.amazonaws.com/prod"
+  #upload(baseurl)
   cmd = prompt()
 
   while cmd != 0:
@@ -511,17 +198,40 @@ try:
       reset(baseurl)
     else:
       print("** Unknown command, try again...")
-    #
-    cmd = prompt()
 
-  #
-  # done
-  #
-  print()
-  print('** done **')
-  sys.exit(0)
+  #  def main():
+  # print()
+  # print(">> Enter a command:")
+  # print("   0 => end")
+  # print("   1 => images")
+  # print("   2 => predictions")
+  # print("   3 => upload")
+  # print("   4 => retrieve")
+  # print("   5 => stats")
 
-except Exception as e:
-  logging.error("**ERROR: main() failed:")
-  logging.error(e)
-  sys.exit(0)
+  # cmd = input()
+
+  # baseurl= f"https://rce057rit7.execute-api.us-east-2.amazonaws.com/prod"
+
+  # while cmd != 0:
+  #   #
+  #   if cmd == 1:
+  #     pass
+  #   elif cmd == 2:
+  #     pass
+  #   elif cmd == 3:
+  #     upload(baseurl)
+  #   elif cmd == 4:
+  #     pass
+  #   elif cmd == 5:
+  #     pass
+  #   else:
+  #     print("** Unknown command, try again...")
+  #   #cmd = prompt()
+
+  #   print('** done **')
+  #  # upload(baseurl)
+
+
+if __name__ == "__main__":
+   main()
