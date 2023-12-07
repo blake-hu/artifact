@@ -1,15 +1,33 @@
+#
+# Client-side python app for AI Image Detection app, which is calling
+# a set of lambda functions in AWS through API Gateway.
+# The overall purpose of the app is to process an image and
+# calculate the percentage likelihood of the image being AI-generated.
+#
+# BASH Team:
+#   Adela Mihaela Jianu
+#   Blake Yang Hu
+#   Shirley Zhang
+# 
+#   Northwestern University
+#   CS 310, Final Project
+#
+
 import pathlib
 import base64
 import logging
 import requests
 import json
-
 import uuid
 import pathlib
 import logging
 import sys
 import os
 
+############################################################
+#
+# prompt
+#
 def prompt():
   """
   Prompts the user and returns the command number
@@ -42,10 +60,14 @@ def prompt():
 
   return cmd
 
+############################################################
+#
+# upload
+#
 def upload(baseurl):
   """
-  Prompts the user for a local filename and user id, 
-  and uploads that asset (PDF) to S3 for processing. 
+  Prompts the user for a local filename, 
+  and uploads that asset (jpg/png) to S3 for processing. 
 
   Parameters
   ----------
@@ -72,7 +94,7 @@ def upload(baseurl):
     infile.close()
 
     #
-    # now encode the pdf as base64. Note b64encode returns
+    # now encode the image as base64. Note b64encode returns
     # a bytes object, not a string. So then we have to convert
     # (decode) the bytes -> string, and then we can serialize
     # the string as JSON for upload to server:
@@ -88,8 +110,8 @@ def upload(baseurl):
     #
     api = '/upload'
     url = baseurl + api
-    print(url)
     res = requests.post(url, json=data)
+
     #
     # let's look at what we got back:
     #
@@ -103,8 +125,10 @@ def upload(baseurl):
         print("Error message:", body)
       #
       return
+    
     body = res.json()
 
+    # return message
     print("uploaded: ", body["imageID"])
     print("**Save the above number, this is your imageid. Run predictions to see the ai prediction on this image.**")
     return
@@ -115,14 +139,14 @@ def upload(baseurl):
     logging.error(e)
     return
   
-  # ############################################################
-# #
-# # download
-# #
-def download(baseurl):
+############################################################
+#
+# retrieve
+#
+def retrieve(baseurl):
   """
-  Prompts the user for the job id, and downloads
-  that asset (PDF).
+  Prompts the user for the image id, and returns the
+  that percentage of the image being ai generated.
 
   Parameters
   ----------
@@ -133,21 +157,24 @@ def download(baseurl):
   nothing
   """
 
-  print("Enter job id>")
-  jobid = input()
+  print("Enter image id>")
+  imageid = input()
 
   try:
     #
     # call the web service:
     #
-    api = '/download'
-    url = baseurl + api + '/' + jobid
+    api = '/retrieve'
+    url = baseurl + api + '/' + imageid
 
     res = requests.get(url)
 
     #
     # let's look at what we got back:
     #
+
+    body = res.json()
+
     if res.status_code != 200:
       # failed:
       print("Failed with status code:", res.status_code)
@@ -159,33 +186,31 @@ def download(baseurl):
       #
       return
 
-    #
-    # deserialize and extract results:
-    #
-    body = res.json()
-
-    datastr = body
-
-    base64_bytes = datastr.encode()
-    bytes = base64.b64decode(base64_bytes)
-    results = bytes.decode()
-
-    print(results)
+    print("Filename : " ,body["file_name"])
+    if (body["status"] != "complete"):
+      # print status if pending
+      print("Status   : ", body["status"])
+    else:
+      # output percentage if status complete
+      print("Percentage : ", body["precentage_ai"])
     return
 
   except Exception as e:
-    logging.error("download() failed:")
+    logging.error("retrieve() failed:")
     logging.error("url: " + url)
     logging.error(e)
     return
   
-def main():
+############################################################
+# main
+#
+# def main():
+try:
   baseurl= f"https://rce057rit7.execute-api.us-east-2.amazonaws.com/prod"
-  #upload(baseurl)
+
   cmd = prompt()
 
   while cmd != 0:
-    #
     if cmd == 1:
       users(baseurl)
     elif cmd == 2:
@@ -193,45 +218,17 @@ def main():
     elif cmd == 3:
       upload(baseurl)
     elif cmd == 4:
-      download(baseurl)
+      retrieve(baseurl)
     elif cmd == 5:
       reset(baseurl)
     else:
       print("** Unknown command, try again...")
+    cmd = prompt()
 
-  #  def main():
-  # print()
-  # print(">> Enter a command:")
-  # print("   0 => end")
-  # print("   1 => images")
-  # print("   2 => predictions")
-  # print("   3 => upload")
-  # print("   4 => retrieve")
-  # print("   5 => stats")
+except Exception as e:
+  logging.error("**ERROR: main() failed:")
+  logging.error(e)
+  sys.exit(0)
 
-  # cmd = input()
-
-  # baseurl= f"https://rce057rit7.execute-api.us-east-2.amazonaws.com/prod"
-
-  # while cmd != 0:
-  #   #
-  #   if cmd == 1:
-  #     pass
-  #   elif cmd == 2:
-  #     pass
-  #   elif cmd == 3:
-  #     upload(baseurl)
-  #   elif cmd == 4:
-  #     pass
-  #   elif cmd == 5:
-  #     pass
-  #   else:
-  #     print("** Unknown command, try again...")
-  #   #cmd = prompt()
-
-  #   print('** done **')
-  #  # upload(baseurl)
-
-
-if __name__ == "__main__":
-   main()
+# if __name__ == "__main__":
+#    main()
