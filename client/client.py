@@ -175,7 +175,7 @@ def retrieve(baseurl):
 
     body = res.json()
 
-    if res.status_code != 200:
+    if (res.status_code != 200):
       # failed:
       print("Failed with status code:", res.status_code)
       print("url: " + url)
@@ -186,14 +186,16 @@ def retrieve(baseurl):
       #
       return
 
-    print("Filename : " ,body["file_name"])
+    print("Filename   : " ,body["file_name"])
     if (body["status"] != "complete"):
       # print status if pending
-      print("Status   : ", body["status"])
+      print("Status     : ", body["status"])
     else:
       # output percentage if status complete
       print("Percentage : ", body["precentage_ai"])
+      print("** The likelihood of", body["file_name"], "being ai generated is", body["precentage_ai"], "% **")
     return
+    
 
   except Exception as e:
     logging.error("retrieve() failed:")
@@ -206,6 +208,14 @@ def retrieve(baseurl):
 #
 # def main():
 try:
+  print()
+  print('**                     Welcome to the BASH: AI Image Detection App                   **')
+  print('** This app will tell you the percentage likelihood of your image being AI generated **')
+  print('**                                                                                   **')
+  print('**                First upload your image, then retrieve your results                **')
+  print('**            It may take a few seconds, if your status is pending, retry            **')
+  print('**                     This app only takes jpg, jpeg, png files                      **')
+  print()
   baseurl= f"https://rce057rit7.execute-api.us-east-2.amazonaws.com/prod"
 
   cmd = prompt()
