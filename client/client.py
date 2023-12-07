@@ -1,4 +1,4 @@
-#
+# 
 # Client-side python app for AI Image Detection app, which is calling
 # a set of lambda functions in AWS through API Gateway.
 # The overall purpose of the app is to process an image and
