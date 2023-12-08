@@ -1,0 +1,3 @@
+aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 975922066040.dkr.ecr.us-east-2.amazonaws.com
+docker tag ab3da4b1fa5d 975922066040.dkr.ecr.us-east-2.amazonaws.com/sagemaker:artifact-v6
+docker push 975922066040.dkr.ecr.us-east-2.amazonaws.com/sagemaker:artifact-v6
