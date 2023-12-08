@@ -24,6 +24,7 @@ CREATE TABLE imagePredictions
     image_id           int not null,
     precentage_ai      DECIMAL(7, 5) NOT NULL,
     model_version      varchar(128) not null,
+    status             ENUM('pending', 'complete', 'error') NOT NULL,
     PRIMARY KEY (prediction_id),
     FOREIGN KEY (image_id) REFERENCES imageMetadata(image_id)
 );
