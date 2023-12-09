@@ -19,14 +19,9 @@ import pathlib
 import base64
 import logging
 import requests
-import json
-import uuid
 import pathlib
 import logging
 import sys
-import os
-
-from configparser import ConfigParser
 
 import matplotlib.pyplot as plt
 import matplotlib.image as img
